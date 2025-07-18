@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { housesAPI } from '../services/api'
+import { housesAPI, agentsAPI } from '../services/api'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -33,13 +33,22 @@ const SearchResults = () => {
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [agents, setAgents] = useState({})
 
   // Fetch properties from API based on filters/searchParams
   useEffect(() => {
-    const fetchProperties = async () => {
+    const fetchData = async () => {
       setLoading(true)
       setError(null)
       try {
+        // Fetch agents
+        const agentsList = await agentsAPI.getAgents()
+        const agentsMap = {}
+        agentsList.forEach(agent => {
+          agentsMap[agent.id] = agent
+        })
+        setAgents(agentsMap)
+
         // Build params from searchParams and filters
         const params = {}
         for (const [key, value] of searchParams.entries()) {
@@ -60,7 +69,7 @@ const SearchResults = () => {
         setLoading(false)
       }
     }
-    fetchProperties()
+    fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, selectedBedrooms, selectedPropertyType, priceRange])
   
@@ -81,7 +90,9 @@ const SearchResults = () => {
     }
   })
 
-  const PropertyCard = ({ property, isListView = false }) => (
+  const PropertyCard = ({ property, isListView = false }) => {
+    const agentName = agents[property.agent_id]?.full_name || agents[property.agent_id]?.name || property.agent_name || property.agent || 'N/A'
+    return (
     <Card
       className={`overflow-hidden hover:shadow-xl transition-shadow cursor-pointer ${isListView ? 'flex flex-row' : ''}`}
       onClick={() => navigate(`/property/${property.id}`)}
@@ -139,7 +150,7 @@ const SearchResults = () => {
           </div>
           <div className={isListView ? 'flex flex-col items-end' : 'flex items-center justify-between'}>
             <span className="text-sm text-gray-600 mb-2">
-              Agent: {property.agent_name || property.agent || 'N/A'}
+              Agent: {agentName}
             </span>
             <Button size="sm">
               View Details
@@ -148,7 +159,8 @@ const SearchResults = () => {
         </div>
       </CardContent>
     </Card>
-  )
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pt-8">
